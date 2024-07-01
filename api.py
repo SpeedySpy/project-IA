@@ -1,27 +1,58 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from pydantic import BaseModel
-from function import train_model_function, generate_text_function, get_columns_function
+from typing import Optional
+from function import (
+    train_model_function,
+    generate_text_function,
+    get_top_10_appreciated,
+    predict_appreciation_and_rentability
+)
 
 app = FastAPI()
 
-class TrainData(BaseModel):
-    text: list
-    label: list
+class TrainFilePath(BaseModel):
+    file_path: str
 
 class GenerateData(BaseModel):
     prompt: str
     max_length: int = 50
 
+class PredictData(BaseModel):
+    text: str
+
+class PredictTitle(BaseModel):
+    title: str
+
+@app.get("/")
+def read_root():
+    return {"message": "Bienvenue sur l'API de prédiction de films et séries"}
+
 @app.post("/training")
-def train_model(train_data: TrainData):
-    return train_model_function(train_data.text, train_data.label)
+def train_model(train_file: TrainFilePath):
+    try:
+        return train_model_function(train_file.file_path)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/generate")
 def generate_text(generate_data: GenerateData):
-    return generate_text_function(generate_data.prompt, generate_data.max_length)
+    try:
+        return generate_text_function(generate_data.prompt, generate_data.max_length)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/model")
-def get_model():
-    return {"message": "Modèle : openai-community/gpt2, Tâche : Génération de texte"}
+@app.post("/predict")
+def predict_appreciation_rentability(predict_title: PredictTitle):
+    try:
+        return predict_appreciation_and_rentability(predict_title.title)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/top10/appreciated")
+def top_10_appreciated(year: int):
+    try:
+        return get_top_10_appreciated(year)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
