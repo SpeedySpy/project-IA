@@ -4,7 +4,7 @@ from typing import Optional
 from function import (
     train_model_function,
     generate_text_function,
-    get_top_10_appreciated,
+    get_top_10,
     predict_appreciation_and_rentability
 )
 
@@ -49,7 +49,7 @@ def predict_appreciation_rentability(predict_title: PredictTitle):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/top10/appreciated")
-def top_10_appreciated(year: int):
+def top_10(year: int):
     try:
         return get_top_10_appreciated(year)
     except Exception as e:

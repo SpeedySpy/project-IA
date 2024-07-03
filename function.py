@@ -57,7 +57,7 @@ def generate_text_function(prompt, max_length):
         raise HTTPException(status_code=500, detail=f"Erreur lors de la génération du texte : {str(e)}")
 
 
-def get_top_10_appreciated(year):
+def get_top_10(year):
     try:
         file_path = 'netflix titles.csv'
         try:
@@ -68,16 +68,26 @@ def get_top_10_appreciated(year):
         df = df[df['release_year'] == year]
 
         model_appreciation = joblib.load("model/model_appreciation.pkl")
+        model_rentability = joblib.load("model/model_rentability.pkl")
 
         df['appreciation_score'] = df['title'].apply(lambda x: model_appreciation.predict_proba([x])[0][1])
+        df['rentability_score'] = df['title'].apply(lambda x: model_rentability.predict_proba([x])[0][1])
 
-        top_10_appreciated = df.nlargest(10, 'appreciation_score')
+        # Trier les scores avant de les formater en pourcentage
+        top_10_appreciated = df.nlargest(10, 'appreciation_score')[['title', 'listed_in', 'release_year', 'appreciation_score']]
+        top_10_profitable = df.nlargest(10, 'rentability_score')[['title', 'listed_in', 'release_year', 'rentability_score']]
 
+        # Formater les scores en pourcentage après tri
         top_10_appreciated['appreciation_score'] = top_10_appreciated['appreciation_score'].apply(lambda x: f"{x * 100:.2f}%")
-        
-        return top_10_appreciated[['title', 'listed_in', 'release_year', 'appreciation_score']].to_dict(orient='records')
+        top_10_profitable['rentability_score'] = top_10_profitable['rentability_score'].apply(lambda x: f"{x * 100:.2f}%")
+
+        return {
+            "top_10_appreciated": top_10_appreciated.to_dict(orient='records'),
+            "top_10_profitable": top_10_profitable.to_dict(orient='records')
+        }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erreur lors de la récupération des films et séries les plus appréciés : {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Erreur lors de la récupération des films et séries les plus appréciés et rentables : {str(e)}")
+
     
 def predict_appreciation_and_rentability(title):
     try:
