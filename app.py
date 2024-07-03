@@ -6,19 +6,21 @@ import os
 
 API_URL = "http://127.0.0.1:8000"
 
-st.title("Application de Prédiction de Films et Séries de la plaforme Netflix")
+st.title("Application de Prédiction de Films et Séries de la plateforme Netflix")
 
 st.header("Prédiction de l'Appréciation et de la Rentabilité")
 title = st.text_input("Entrez le titre du film ou de la série :")
 
 if st.button("Prédire"):
     if title:
-        response = requests.post(f"{API_URL}/predict_appreciation_rentability", json={"title": title})
+        response = requests.post(f"{API_URL}/predict", json={"title": title})
         if response.status_code == 200:
             prediction = response.json()
             st.write(f"Titre : {prediction['title']}")
             st.write(f"Probabilité d'appréciation : {prediction['appreciation_probability']}")
             st.write(f"Probabilité de rentabilité : {prediction['rentability_probability']}")
+        elif response.status_code == 404:
+            st.error(f"Ce titre n'est pas présent sur Netflix.")
         else:
             st.error(f"Erreur lors de la prédiction : {response.text}")
 
