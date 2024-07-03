@@ -52,7 +52,7 @@ def predict_appreciation_rentability(predict_title: PredictTitle):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/top10/appreciated", summary="Top 10 appréciés", description="Obtenir le top 10 des films et séries les plus appréciés pour une année donnée.")
+@app.get("/top10/appreciated", summary="Top 10 ", description="Obtenir le top 10 des films et séries les plus appréciés pour une année donnée.")
 def top_10(year: int):
     try:
         return get_top_10(year)
