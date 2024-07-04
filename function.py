@@ -12,36 +12,38 @@ generator = pipeline("text-generation", model="openai-community/gpt2")
 
 def train_model_function(file_path):
     try:
-
+        # Chargement des données
         try:
             df = pd.read_csv(file_path, encoding='utf-8')
         except UnicodeDecodeError:
             df = pd.read_csv(file_path, encoding='latin1')
         
-      
-        if 'title' not in df.columns or 'type' not in df.columns or 'rating' not in df.columns:
-            raise HTTPException(status_code=400, detail="Le fichier CSV doit contenir les colonnes 'title', 'type' et 'rating'.")
+        # Vérification des colonnes nécessaires
+        required_columns = ['title', 'type', 'rating', 'description', 'duration']
+        if not all(column in df.columns for column in required_columns):
+            raise HTTPException(status_code=400, detail=f"Le fichier CSV doit contenir les colonnes {required_columns}.")
+
+        # Nettoyage des données
+        df = df.dropna(subset=required_columns)
         
+        # Création de la colonne 'Appreciation'
+        df['Appreciation'] = df['rating'].str.contains('TV-MA|R', case=False).astype(int)
+        df['description_length'] = df['description'].apply(len)  # Longueur de la description
+        df['num_seasons'] = df['duration'].str.extract(r'(\d+)').fillna(1).astype(int)  # Extraction du nombre de saisons
+
+        # Préparation des données pour l'entraînement
+        features = df[['title', 'description', 'num_seasons']]
+        X_train_app, X_test_app, y_train_app, y_test_app = train_test_split(features, df['Appreciation'], test_size=0.2, random_state=42)
         
-        df = df.dropna(subset=['title', 'type', 'rating'])
-        
-       
-        df['Appreciation'] = (df['rating'].str.contains('TV-MA|R', case=False)).astype(int)  
-        X_train_app, X_test_app, y_train_app, y_test_app = train_test_split(df['title'], df['Appreciation'], test_size=0.2, random_state=42)
-        model_appreciation = make_pipeline(TfidfVectorizer(), LogisticRegression())
-        model_appreciation.fit(X_train_app, y_train_app)
+        # Pipeline pour l'entraînement du modèle
+        model_appreciation = make_pipeline(
+            TfidfVectorizer(stop_words='english'),
+            LogisticRegression()
+        )
+        model_appreciation.fit(X_train_app['title'] + ' ' + X_train_app['description'], y_train_app)  # Utilisation des titres et descriptions comme entrées textuelles
         joblib.dump(model_appreciation, "model/model_appreciation.pkl")
 
-
-        df['Rentability'] = (df['listed_in'].str.contains('Drama|Action', case=False)).astype(int)  
-        X_train_rent, X_test_rent, y_train_rent, y_test_rent = train_test_split(df['title'], df['Rentability'], test_size=0.2, random_state=42)
-        model_rentability = make_pipeline(TfidfVectorizer(), LogisticRegression())
-        model_rentability.fit(X_train_rent, y_train_rent)
-        joblib.dump(model_rentability, "model/model_rentability.pkl")
-
-        return {
-            "message": "Modèles de classification entraînés avec succès"
-        }
+        return {"message": "Modèles de classification entraînés avec succès"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur lors de l'entraînement des modèles de classification : {str(e)}")
     
